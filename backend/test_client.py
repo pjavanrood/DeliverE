@@ -6,7 +6,7 @@ base_url = 'http://localhost:4000'
 header = {'Content-Type': 'application/json'}
 
 data = {
-    'email': 'ggg',
+    'email': 'gaaaggsqqqssssssss',
     'name': 'Hello',
     'last_name': 'Hello',
     'password': 'Hello',
@@ -18,4 +18,4 @@ res = requests.post(
     data=json.dumps(data)
 )
 
-print(res)
+print(res.json())

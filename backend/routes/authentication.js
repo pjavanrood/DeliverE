@@ -8,121 +8,155 @@ aws.config.update({
     region: process.env.AWS_REGION
 })
 
-const dynamodb = new aws.DynamoDB()//.DocumentClient()
+const dynamodb = new aws.DynamoDB.DocumentClient()
+
 const user_table_name = 'user-information'
 
 const router = express.Router()
 
+async function check_user_exist(email) {
+    const params = {
+        TableName: user_table_name,
+        Key: {
+            email
+        }
+    }
+
+    const response = await dynamodb.get(params).promise()
+
+    console.log('Checking User Exist:', email, response)
+
+    if ( Object.keys(response).length == 0 ) {
+        return {exist: false}
+    } else {
+        return {exist: true, data: response.Item}
+    }
+}
+
+async function add_user(user) {
+    const params = {
+        TableName: user_table_name,
+        Item: user
+    }
+
+    const response = await dynamodb.put(params).promise()
+
+    console.log('Adding User:', user, response)
+
+    if ( Object.keys(response).length == 0 ) {
+        return true
+    } else {
+        return false
+    }
+}
+
+function match_password(actual, expected) {
+    console.log(actual, expected, actual === expected)
+    return actual === expected
+}
+
 router.get('/signup', (req, res) => {
-    res.json({msg: 'GET sign up page'})
+    res.json({message: 'GET sign up page'})
 })
 
 router.post('/signup', async (req, res) => {
-    // res.json({msg: 'POST sign up page'})
-
     const name = req.body.name
     const last_name = req.body.last_name
     const email = req.body.email
     const password = req.body.password
 
     if (
-        name === 'undefined'
-        || last_name === 'undefined'
-        || email === 'undefined'
-        || password === 'undefined'
+        name === undefined
+        || last_name === undefined
+        || email === undefined
+        || password === undefined
     ) {
         res.json({
-            'message': 'Missing Data',
-            'success': false
+            message: 'Missing Data',
+            success: false
         })
 
         return
     }
 
+    const user_exist = await check_user_exist(email)
 
-    params = {
-        TableName: user_table_name,
-        Key: {
-            'email': {S: email}
-        }
+    if (user_exist.exist) {
+        res.json({
+            success: false,
+            message: 'Email already registered'
+        })
+
+        return
     }
 
-    dynamodb.getItem(params, function(err, data) {
-        if (err) {
-            console.log("Dynamo DB Error: ", err)
-        } else {
-            console.log('Get item', data)
-            if ( Object.keys(data).length == 0 ) {
-                console.log('Not Exist')
-            } else {
-                res.json({
-                    "message": "Email already registered",
-                    "success": false
-                })
+    console.log(user_exist)
 
-                return
-            }
-        }
-    })
-
-    params = {
-        Item: {
-            'email': {S: email},
-            'name': {S: name},
-            'last_name': {S: last_name},
-            'password': {S: password}
-        }, 
-        TableName: user_table_name
+    user = {
+        name: name,
+        last_name: last_name,
+        email: email,
+        password: password
     }
 
-    dynamodb.putItem(params, function(err, data) {
-        if (err) {
-            console.log('Error PUT user', err)
-            
-            res.json({
-                "message": "Internal Error",
-                "success": false
-            })
+    const user_added = await add_user(user)
 
-            res.status(500)
+    if (user_added) {
+        res.json({
+            success: true,
+            message: 'User Added Successfully'
+        })
 
-            return
-        } 
-        
-    })
-
-    res.json({ "success": true })
-
-    return
+        return
+    } else {
+        res.json({
+            success: false,
+            message: 'Failed to update db'
+        })
+    }
 })
 
 router.get('/login', (req, res) => {
-    res.json({msg: 'GET log in page'})
+    res.json({message: 'GET log in page'})
 })
 
-router.post('/login', (req, res) => {
-    res.json({msg: 'POST log in page'})
+router.post('/login', async (req, res) => {
+    const email = req.body.email
+    const password = req.body.password
+
+    if ( email === undefined || password === undefined) {
+        res.json({
+            message: 'Missing Data',
+            success: false
+        })
+
+        return
+    }
+
+    const user_exist = await check_user_exist(email)
+
+    if (!user_exist.exist) {
+        res.json({
+            success: false,
+            message: 'User Not Found'
+        })
+
+        return
+    }
+
+    if ( match_password(password, user_exist.data.password) ) {
+        res.json({
+            success: true,
+            message: 'Login Successful'
+        })
+
+    } else {
+        res.json({
+            success: false,
+            message: 'Wrong Password'
+        })
+    }
+
 })
-
-
 
 module.exports = router
-    //params = {
-    //     TableName: user_table_name,
-    //     Item: {
-    //         'email': {S: email},
-    //         'name': {S: name},
-    //         'last_name': {S: last_name},
-    //         'password': {S: password}
-    //     }
-    // }
-
-    // // console.log(params)
-
-    // dynamodb.putItem(params, function(err, data) {
-    //     if (err) {
-    //         console.log("Dynamo DB Error: ", err)
-    //     } else {
-    //         console.log('PUT', data)
-    //     }
-    // })
