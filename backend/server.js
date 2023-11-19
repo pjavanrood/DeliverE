@@ -1,12 +1,14 @@
 // load Enviroment Variables
 require('dotenv').config() 
 
+const cors = require('cors')
 const express = require('express')
 const authRoutes = require('./routes/authentication')
 
 // express app
 const app = express()
 
+app.use(cors())
 app.use(express.json())
 
 // logging middleware

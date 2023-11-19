@@ -25,7 +25,6 @@ describe('Authentication Routes', () => {
         expect(res.body.message).toBe('User Added Successfully')
     })
 
-
     test('should post existing user /signup', async () => {
         const res = await request(app).post('/signup').send({
             name: 'Parshan22',
